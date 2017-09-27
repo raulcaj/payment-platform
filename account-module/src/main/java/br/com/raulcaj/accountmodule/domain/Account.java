@@ -1,5 +1,7 @@
 package br.com.raulcaj.accountmodule.domain;
 
+import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -12,37 +14,56 @@ import javax.persistence.Id;
 import javax.persistence.MapKey;
 import javax.persistence.OneToMany;
 import javax.validation.constraints.Min;
-import javax.validation.constraints.Size;
 
+import com.google.common.base.Functions;
 
 @Entity
-public class Account {
+public class Account implements Serializable {
 	
+	private static final long serialVersionUID = 3617484173095871631L;
+
 	@Id
 	@GeneratedValue
 	private Long id;
 	
 	@OneToMany
 	@MapKey
-	private Map<String, Limit> limitByType;
+	private Map<LimitType, Limit> limitByType;
 	
 	public Account() {
-		this.limitByType = Stream.of(new Limit("credit"), new Limit("withdraw")).collect(Collectors.toMap(Limit::getType, Function.identity()));
+		this.limitByType = Stream.of(new Limit(LimitType.CREDIT), new Limit(LimitType.WITHDRAW)).collect(Collectors.toMap(Limit::getType, Function.identity()));
 	}
 	
 	public Long getId() {
 		return id;
 	}
 	
-	public Optional<Limit> limitByType(String type) {
+	public Optional<Limit> limitByType(LimitType type) {
 		return Optional.ofNullable(limitByType.getOrDefault(type, null));
 	}
 	
+	public enum LimitType implements Serializable {
+		CREDIT("credit"), WITHDRAW("withdraw");
+		private LimitType(String id) {
+			this.id = id;
+		}
+		private final String id;
+		
+		public String getId() {
+			return id;
+		}
+		
+		public Optional<LimitType> getById(String id) {
+			return Arrays.stream(values()).filter(Functions.compose(id::equals, LimitType::getId)::apply).findAny();
+		}
+	}
+	
 	@Entity
-	public class Limit {
+	public class Limit implements Serializable {
+		private static final long serialVersionUID = 6787887856051044310L;
+
 		@Id
-		@Size(min=1, max=40, message="type length must be between 1 to 40 characters long")
-		private String type;
+		private LimitType type;
 		
 		@Min(value=0L, message="balance must always be positive")
 		private long balance;
@@ -50,7 +71,7 @@ public class Account {
 		public Limit() {
 		}
 		
-		public Limit(String type) {
+		public Limit(LimitType type) {
 			this.type = type;
 			this.balance = 0L;
 		}
@@ -72,7 +93,7 @@ public class Account {
 			return balance;
 		}
 		
-		public String getType() {
+		public LimitType getType() {
 			return type;
 		}
 		
