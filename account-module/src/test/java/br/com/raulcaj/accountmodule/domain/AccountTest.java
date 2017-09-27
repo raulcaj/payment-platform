@@ -7,7 +7,6 @@ import java.util.Optional;
 import org.junit.Test;
 
 import br.com.raulcaj.accountmodule.domain.Account.Limit;
-import br.com.raulcaj.accountmodule.domain.Account.Limit.LimitExceededException;
 import br.com.raulcaj.accountmodule.domain.Account.LimitType;
 
 public class AccountTest {
@@ -31,18 +30,10 @@ public class AccountTest {
 		assertEquals(limit.getBalance(), 0L);
 		limit.increase(1000L);
 		assertEquals(limit.getBalance(), 1000L);
-		try {
-			limit.decrease(50L);
-		} catch (LimitExceededException e) {
-			fail(e.getMessage());
-		}
+		limit.decrease(50L);
 		assertEquals(limit.getBalance(), 950L);
-		try {
-			limit.decrease(1000L);
-		} catch (LimitExceededException e) {
-			return;
-		}
-		fail("shouldn't let it decrease by 1000");
+		limit.decrease(1000L);
+		assertEquals(limit.getBalance(), 950L);
 	}
 
 }

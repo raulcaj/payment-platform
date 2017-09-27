@@ -1,7 +1,9 @@
 package br.com.raulcaj.accountmodule.domain;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -27,7 +29,7 @@ public class Account implements Serializable {
 	private Long id;
 	
 	@OneToMany
-	@MapKey
+	@MapKey(name="type")
 	private Map<LimitType, Limit> limitByType;
 	
 	public Account() {
@@ -40,6 +42,10 @@ public class Account implements Serializable {
 	
 	public Optional<Limit> limitByType(LimitType type) {
 		return Optional.ofNullable(limitByType.getOrDefault(type, null));
+	}
+	
+	public List<Limit> getLimits() {
+		return new ArrayList<>(this.limitByType.values());
 	}
 	
 	public enum LimitType implements Serializable {
@@ -63,6 +69,9 @@ public class Account implements Serializable {
 		private static final long serialVersionUID = 6787887856051044310L;
 
 		@Id
+		@GeneratedValue
+		private Long id;
+		
 		private LimitType type;
 		
 		@Min(value=0L, message="balance must always be positive")
@@ -76,14 +85,18 @@ public class Account implements Serializable {
 			this.balance = 0L;
 		}
 		
-		public long increase(final long amount) {
+		public long requestUpdate(final long ammount) {
+			return ammount < 0 ? decrease(-ammount) : increase(ammount);
+		}
+		
+		public long increase(@Min(0L)final long amount) {
 			this.balance += amount;
 			return this.balance;
 		}
 		
-		public long decrease(final long amount) throws LimitExceededException {
+		public long decrease(@Min(0L)final long amount) {
 			if(this.balance - amount < 0) {
-				throw new LimitExceededException(this.balance, amount);
+				return this.balance;
 			}
 			this.balance -= amount;
 			return this.balance;
@@ -95,16 +108,6 @@ public class Account implements Serializable {
 		
 		public LimitType getType() {
 			return type;
-		}
-		
-		public class LimitExceededException extends Exception {
-			private static final long serialVersionUID = 556028030514673098L;
-			final long currentBalance;
-			final long decreaseRequested;
-			public LimitExceededException(final long currentBalance, final long amount) {
-				this.currentBalance = currentBalance;
-				this.decreaseRequested = amount;
-			}
 		}
 	}
 	
