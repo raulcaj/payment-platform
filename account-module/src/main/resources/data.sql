@@ -1,3 +1,5 @@
-insert into limit values (1, "credit", 0);
-insert into limit values (2, "withdrawal", 0);
+insert into account$limit values (1, 0, 0);
+insert into account$limit values (2, 0, 1);
 insert into account values (1);
+insert into account_limit_by_type values (1, 1);
+insert into account_limit_by_type values (1, 2);

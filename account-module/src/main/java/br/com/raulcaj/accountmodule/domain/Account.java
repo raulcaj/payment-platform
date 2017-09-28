@@ -65,7 +65,7 @@ public class Account implements Serializable {
 	}
 	
 	@Entity
-	public class Limit implements Serializable {
+	public static class Limit implements Serializable {
 		private static final long serialVersionUID = 6787887856051044310L;
 
 		@Id
