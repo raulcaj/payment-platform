@@ -1,5 +1,6 @@
 package br.com.raulcaj.transactionmodule.domain;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -49,10 +50,13 @@ public class AccountService {
 				.concat(operationPath);
 	}
 
-	public boolean canTransactionProceed(TxRequest tx, OperationType operationType) throws Exception {
+	public boolean decreaseAccountLimit(TxRequest tx, OperationType operationType) throws Exception {
+		if(!isValidTxRequest(tx, operationType)) {
+			return false;
+		}
 		final Map<String, Object> request = new LinkedHashMap<>();
 		request.put("limit_type", operationType.getLimit_type());
-		request.put("amount", tx.getAmount());
+		request.put("amount", tx.getAmount().negate());
 		try {
 			restTemplate.patchForObject(operationUri(patchLimitPath), Arrays.asList(request), Object.class, tx.getAccount_id());
 			return true;
@@ -63,5 +67,30 @@ public class AccountService {
 		}
 		return false;
 	}
-
+	
+	public boolean increaseAccountLimit(PaymentRequest payment, OperationType paymentOperation) {
+		if(!isValidPaymentRequest(payment)) {
+			return false;
+		}
+		final Map<String, Object> request = new LinkedHashMap<>();
+		request.put("limit_type", paymentOperation.getLimit_type());
+		request.put("amount", payment.getAmount());
+		try {
+			restTemplate.patchForObject(operationUri(patchLimitPath), Arrays.asList(request), Object.class, payment.getAccount_id());
+			return true;
+		} catch (HttpClientErrorException e) {
+			if (HttpStatus.NOT_ACCEPTABLE.equals(e.getStatusCode())) {
+				return false;
+			}
+		}
+		return false;
+	}
+	
+	private boolean isValidTxRequest(TxRequest tx, OperationType operationType) {
+		return !"payment".equals(operationType.getLimit_type()) && tx.getAmount().compareTo(BigDecimal.ZERO) > 0;
+	}
+	
+	private boolean isValidPaymentRequest(PaymentRequest payment) {
+		return payment.getAmount().compareTo(BigDecimal.ZERO) > 0;
+	}
 }
