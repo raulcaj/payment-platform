@@ -33,7 +33,7 @@ public class Account implements Serializable {
 	private Map<LimitType, Limit> limitByType;
 	
 	public Account() {
-		this.limitByType = Stream.of(new Limit(LimitType.CREDIT), new Limit(LimitType.WITHDRAW)).collect(Collectors.toMap(Limit::getType, Function.identity()));
+		this.limitByType = Stream.of(new Limit(LimitType.CREDIT), new Limit(LimitType.WITHDRAWAL)).collect(Collectors.toMap(Limit::getType, Function.identity()));
 	}
 	
 	public Long getId() {
@@ -49,7 +49,7 @@ public class Account implements Serializable {
 	}
 	
 	public enum LimitType implements Serializable {
-		CREDIT("credit"), WITHDRAW("withdraw");
+		CREDIT("credit"), WITHDRAWAL("withdrawal");
 		private LimitType(String id) {
 			this.id = id;
 		}
@@ -85,8 +85,8 @@ public class Account implements Serializable {
 			this.balance = 0L;
 		}
 		
-		public long requestUpdate(final long ammount) {
-			return ammount < 0 ? decrease(-ammount) : increase(ammount);
+		public long requestUpdate(final long amount) {
+			return amount < 0 ? decrease(-amount) : increase(amount);
 		}
 		
 		public long increase(@Min(0L)final long amount) {

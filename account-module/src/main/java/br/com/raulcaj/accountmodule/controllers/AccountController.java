@@ -3,10 +3,12 @@ package br.com.raulcaj.accountmodule.controllers;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
+
 import javax.inject.Inject;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,26 +52,31 @@ public class AccountController {
 		public AccountLimitParam() { }
 	}
 	
+	@RequestMapping(method=RequestMethod.GET, value="/v1/accounts/{id}")
+	public ResponseEntity<Account> getAccountsById(@PathVariable Long id) {
+		return accountRepository.findOne(id).map(a -> new ResponseEntity<>(a, HttpStatus.OK)).orElse(new ResponseEntity<>(HttpStatus.NO_CONTENT));
+	}
+	
 	@RequestMapping(method=RequestMethod.GET, value="/v1/accounts/limits")
-	public List<Account> getAccounts() {
-		return accountRepository.findAll();
+	public ResponseEntity<List<Account>> getAccounts() {
+		return new ResponseEntity<List<Account>>(accountRepository.findAll(), HttpStatus.OK);
 	}
 	
 	@RequestMapping(method=RequestMethod.PATCH, value="/v1/accounts/{id}")
-	public List<Limit> getAmountLimits(@PathVariable Long id, @RequestBody AccountLimitParam param) {
-		return accountRepository.findOne(id).map(curryFirst(this::updateAccountLimits, param)).orElseGet(ArrayList::new);
+	public ResponseEntity<Void> getAmountLimits(@PathVariable Long id, @RequestBody AccountLimitParam param) {
+		accountRepository.findOne(id).ifPresent(curryFirst(this::updateAccountLimits, param));
+		return new ResponseEntity<>(HttpStatus.OK);
 	}
 
-	private List<Limit> updateAccountLimits(final AccountLimitParam param, final Account account) {
+	private void updateAccountLimits(final AccountLimitParam param, final Account account) {
 		final ImmutableMap<LimitType, Long> amountByLimitType = ImmutableMap.of(
 				LimitType.CREDIT, param.available_credit_limit.amount.scaleByPowerOfTen(2).longValue(),
-				LimitType.WITHDRAW, param.available_withdrawal_limit.amount.scaleByPowerOfTen(2).longValue()
+				LimitType.WITHDRAWAL, param.available_withdrawal_limit.amount.scaleByPowerOfTen(2).longValue()
 				);
 		for(Limit limit : account.getLimits()) {
 			limit.requestUpdate(amountByLimitType.getOrDefault(limit.getType(), 0L));
 		}
 		accountRepository.save(account);
-		return account.getLimits();
 	}
 	
 

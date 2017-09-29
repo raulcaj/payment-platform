@@ -16,10 +16,10 @@ public class AccountTest {
 		final Account acc = new Account();
 		assertNull(acc.getId());
 		assertFalse(acc.limitByType(null).isPresent());
-		final Optional<Limit> withdrawLimit = acc.limitByType(LimitType.WITHDRAW);
+		final Optional<Limit> withdrawalLimit = acc.limitByType(LimitType.WITHDRAWAL);
 		final Optional<Limit> opLimit = acc.limitByType(LimitType.CREDIT);
 		validationsOnLimits(opLimit);
-		validationsOnLimits(withdrawLimit);
+		validationsOnLimits(withdrawalLimit);
 	}
 
 	private void validationsOnLimits(final Optional<Limit> opLimit) {
