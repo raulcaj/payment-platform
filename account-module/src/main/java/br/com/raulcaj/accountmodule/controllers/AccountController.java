@@ -18,9 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.google.common.collect.ImmutableMap;
 
 import br.com.raulcaj.accountmodule.domain.AccountRepository;
+import br.com.raulcaj.accountmodule.domain.Limit;
+import br.com.raulcaj.accountmodule.domain.LimitType;
 import br.com.raulcaj.accountmodule.domain.Account;
-import br.com.raulcaj.accountmodule.domain.Account.Limit;
-import br.com.raulcaj.accountmodule.domain.Account.LimitType;
 
 import static br.com.raulcaj.accountmodule.util.LambdaUtil.curryFirst;
 

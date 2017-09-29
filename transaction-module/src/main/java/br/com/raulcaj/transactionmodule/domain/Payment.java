@@ -8,6 +8,7 @@ import javax.persistence.OneToOne;
 public class Payment {
 	@Id
 	private Long id;
+	
 	@OneToOne
 	private Transaction credit;
 	@OneToOne
