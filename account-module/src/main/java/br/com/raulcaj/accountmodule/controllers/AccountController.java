@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.google.common.collect.ImmutableMap;
 
 import br.com.raulcaj.accountmodule.domain.AccountRepository;
-import br.com.raulcaj.accountmodule.domain.Limit;
+import br.com.raulcaj.accountmodule.domain.AccountLimit;
 import br.com.raulcaj.accountmodule.domain.LimitType;
 import br.com.raulcaj.accountmodule.domain.Account;
 
@@ -31,25 +31,18 @@ public class AccountController {
 	@Inject
 	private AccountRepository accountRepository;
 	
-	public static class AccountLimitParam implements Serializable {
-		private static final long serialVersionUID = -5150572878042492966L;
-		private available_limit available_credit_limit;
-		private available_limit available_withdrawal_limit;
-		public static class available_limit implements Serializable {
-			private static final long serialVersionUID = -9018657096739262225L;
-			private BigDecimal amount;
-			public BigDecimal getAmount() {
-				return amount;
-			}
-			public available_limit() {}
+	public static class LimitPatchRequest implements Serializable {
+		private static final long serialVersionUID = -6054017498574285794L;
+		private String limit_type;
+		private BigDecimal amount;
+		
+		public String getLimit_type() {
+			return limit_type;
 		}
-		public available_limit getAvailable_credit_limit() {
-			return available_credit_limit;
+		
+		public BigDecimal getAmount() {
+			return amount;
 		}
-		public available_limit getAvailable_withdrawal_limit() {
-			return available_withdrawal_limit;
-		}
-		public AccountLimitParam() { }
 	}
 	
 	@RequestMapping(method=RequestMethod.GET, value="/v1/accounts/{id}")
@@ -63,20 +56,24 @@ public class AccountController {
 	}
 	
 	@RequestMapping(method=RequestMethod.PATCH, value="/v1/accounts/{id}")
-	public ResponseEntity<Void> getAmountLimits(@PathVariable Long id, @RequestBody AccountLimitParam param) {
+	public ResponseEntity<Void> getAmountLimits(@PathVariable Long id, @RequestBody List<LimitPatchRequest> param) {
 		accountRepository.findOne(id).ifPresent(curryFirst(this::updateAccountLimits, param));
 		return new ResponseEntity<>(HttpStatus.OK);
 	}
 
-	private void updateAccountLimits(final AccountLimitParam param, final Account account) {
+	private void updateAccountLimits(final List<LimitPatchRequest> param, final Account account) {
 		final ImmutableMap<LimitType, Long> amountByLimitType = ImmutableMap.of(
-				LimitType.CREDIT, param.available_credit_limit.amount.scaleByPowerOfTen(2).longValue(),
-				LimitType.WITHDRAWAL, param.available_withdrawal_limit.amount.scaleByPowerOfTen(2).longValue()
+				LimitType.CREDIT, extractParamAmount(LimitType.CREDIT, param),
+				LimitType.WITHDRAWAL, extractParamAmount(LimitType.WITHDRAWAL, param)
 				);
-		for(Limit limit : account.getLimits()) {
+		for(AccountLimit limit : account.getLimits()) {
 			limit.requestUpdate(amountByLimitType.getOrDefault(limit.getType(), 0L));
 		}
 		accountRepository.save(account);
+	}
+
+	private long extractParamAmount(final LimitType type, final List<LimitPatchRequest> param) {
+		return param.stream().filter(l -> l.getLimit_type().equals(type.getId())).findFirst().map(LimitPatchRequest::getAmount).orElse(BigDecimal.ZERO).scaleByPowerOfTen(2).longValue();
 	}
 	
 

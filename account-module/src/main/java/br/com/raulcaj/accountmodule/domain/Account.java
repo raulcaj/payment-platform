@@ -28,21 +28,21 @@ public class Account implements Serializable {
 	@OneToMany
 	@MapKey(name="type")
 	@NotNull
-	private Map<LimitType, Limit> limitByType;
+	private Map<LimitType, AccountLimit> limitByType;
 	
 	public Account() {
-		this.limitByType = Stream.of(new Limit(LimitType.CREDIT), new Limit(LimitType.WITHDRAWAL)).collect(Collectors.toMap(Limit::getType, Function.identity()));
+		this.limitByType = Stream.of(new AccountLimit(LimitType.CREDIT), new AccountLimit(LimitType.WITHDRAWAL)).collect(Collectors.toMap(AccountLimit::getType, Function.identity()));
 	}
 	
 	public Long getId() {
 		return id;
 	}
 	
-	public Optional<Limit> limitByType(LimitType type) {
+	public Optional<AccountLimit> limitByType(LimitType type) {
 		return Optional.ofNullable(limitByType.getOrDefault(type, null));
 	}
 	
-	public List<Limit> getLimits() {
+	public List<AccountLimit> getLimits() {
 		return new ArrayList<>(this.limitByType.values());
 	}
 	

@@ -16,15 +16,15 @@ public class AccountTest {
 		final Account acc = new Account();
 		assertNull(acc.getId());
 		assertFalse(acc.limitByType(null).isPresent());
-		final Optional<Limit> withdrawalLimit = acc.limitByType(LimitType.WITHDRAWAL);
-		final Optional<Limit> opLimit = acc.limitByType(LimitType.CREDIT);
+		final Optional<AccountLimit> withdrawalLimit = acc.limitByType(LimitType.WITHDRAWAL);
+		final Optional<AccountLimit> opLimit = acc.limitByType(LimitType.CREDIT);
 		validationsOnLimits(opLimit);
 		validationsOnLimits(withdrawalLimit);
 	}
 
-	private void validationsOnLimits(final Optional<Limit> opLimit) {
+	private void validationsOnLimits(final Optional<AccountLimit> opLimit) {
 		assertTrue(opLimit.isPresent());
-		final Limit limit = opLimit.get();
+		final AccountLimit limit = opLimit.get();
 		assertEquals(limit.getBalance(), 0L);
 		limit.increase(0);
 		assertEquals(limit.getBalance(), 0L);

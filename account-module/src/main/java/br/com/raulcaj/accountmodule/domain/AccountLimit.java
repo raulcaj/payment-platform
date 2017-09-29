@@ -8,7 +8,7 @@ import javax.persistence.Id;
 import javax.validation.constraints.Min;
 
 @Entity
-public class Limit implements Serializable {
+public class AccountLimit implements Serializable {
 	private static final long serialVersionUID = 6787887856051044310L;
 
 	@Id
@@ -20,10 +20,10 @@ public class Limit implements Serializable {
 	@Min(value=0L, message="balance must always be positive")
 	private long balance;
 	
-	public Limit() {
+	public AccountLimit() {
 	}
 	
-	public Limit(LimitType type) {
+	public AccountLimit(LimitType type) {
 		this.type = type;
 		this.balance = 0L;
 	}

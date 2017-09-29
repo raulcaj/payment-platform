@@ -31,7 +31,7 @@ public class TxController {
 	public ResponseEntity<Void> createTx(@RequestBody TxRequest txRequest) throws Exception {
 		final OperationType operationType = operationTypeRepository.findOne(txRequest.getOperation_type_id()).orElseThrow(() -> new Exception("Operation type not supported")); 
 		try {
-			accountService.transactionRequested(txRequest);
+			accountService.transactionRequested(txRequest, operationType);
 		} catch (Exception e) {
 			throw e;
 		}
