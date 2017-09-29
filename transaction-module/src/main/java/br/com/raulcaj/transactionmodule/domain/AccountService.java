@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import javax.inject.Inject;
-import javax.ws.rs.core.Response;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.ServiceInstance;
@@ -14,6 +13,7 @@ import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -49,16 +49,19 @@ public class AccountService {
 				.concat(operationPath);
 	}
 
-	public void transactionRequested(TxRequest tx, OperationType operationType) throws Exception {
+	public boolean canTransactionProceed(TxRequest tx, OperationType operationType) throws Exception {
 		final Map<String, Object> request = new LinkedHashMap<>();
 		request.put("limit_type", operationType.getLimit_type());
 		request.put("amount", tx.getAmount());
-		final Object o = restTemplate.patchForObject(operationUri(patchLimitPath), Arrays.asList(request),
-				Object.class, tx.getAccount_id());
-//		if (HttpStatus.ACCEPTED.value() != response.getStatus()) {
-//			throw new Exception("Transaction out of account limit");
-//		}
-		System.out.println("x");
+		try {
+			restTemplate.patchForObject(operationUri(patchLimitPath), Arrays.asList(request), Object.class, tx.getAccount_id());
+			return true;
+		} catch (HttpClientErrorException e) {
+			if (HttpStatus.NOT_ACCEPTABLE.equals(e.getStatusCode())) {
+				return false;
+			}
+		}
+		return false;
 	}
 
 }

@@ -3,8 +3,7 @@ package br.com.raulcaj.accountmodule.domain;
 import java.util.List;
 import java.util.Optional;
 
-import javax.inject.Inject;
-
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.ImmutableMap;
@@ -12,7 +11,7 @@ import com.google.common.collect.ImmutableMap;
 @Service
 public class AccountService {
 	
-	@Inject
+	@Autowired
 	private AccountRepository accountRepository;
 
 	public void updateAccountLimits(final Account account, final List<LimitPatchRequest> param) {

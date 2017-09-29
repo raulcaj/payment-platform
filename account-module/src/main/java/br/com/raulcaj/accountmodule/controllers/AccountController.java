@@ -5,9 +5,9 @@ import static br.com.raulcaj.accountmodule.util.LambdaUtil.curryLast;
 
 import java.util.List;
 
-import javax.inject.Inject;
 import javax.transaction.Transactional;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
@@ -26,10 +26,10 @@ import br.com.raulcaj.accountmodule.domain.LimitPatchRequest;
 @RestController
 public class AccountController {
 
-	@Inject
+	@Autowired
 	private AccountService accountService;
 	
-	@Inject
+	@Autowired
 	private AccountRepository accountRepository;
 	
 	@RequestMapping(method=RequestMethod.GET, value="/v1/accounts/{id}")
