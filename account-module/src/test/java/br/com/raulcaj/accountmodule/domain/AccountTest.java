@@ -26,14 +26,6 @@ public class AccountTest {
 		assertTrue(opLimit.isPresent());
 		final AccountLimit limit = opLimit.get();
 		assertEquals(limit.getBalance(), 0L);
-		limit.increase(0);
-		assertEquals(limit.getBalance(), 0L);
-		limit.increase(1000L);
-		assertEquals(limit.getBalance(), 1000L);
-		limit.decrease(50L);
-		assertEquals(limit.getBalance(), 950L);
-		limit.decrease(1000L);
-		assertEquals(limit.getBalance(), 950L);
 	}
 
 }

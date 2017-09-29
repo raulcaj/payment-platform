@@ -1,49 +1,36 @@
 package br.com.raulcaj.accountmodule.controllers;
 
 
-import java.io.Serializable;
-import java.math.BigDecimal;
+import static br.com.raulcaj.accountmodule.util.LambdaUtil.curryLast;
+
 import java.util.List;
 
 import javax.inject.Inject;
+import javax.transaction.Transactional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.google.common.collect.ImmutableMap;
-
-import br.com.raulcaj.accountmodule.domain.AccountRepository;
-import br.com.raulcaj.accountmodule.domain.AccountLimit;
-import br.com.raulcaj.accountmodule.domain.LimitType;
 import br.com.raulcaj.accountmodule.domain.Account;
-
-import static br.com.raulcaj.accountmodule.util.LambdaUtil.curryFirst;
+import br.com.raulcaj.accountmodule.domain.AccountRepository;
+import br.com.raulcaj.accountmodule.domain.AccountService;
+import br.com.raulcaj.accountmodule.domain.LimitPatchRequest;
 
 
 @RestController
 public class AccountController {
 
 	@Inject
-	private AccountRepository accountRepository;
+	private AccountService accountService;
 	
-	public static class LimitPatchRequest implements Serializable {
-		private static final long serialVersionUID = -6054017498574285794L;
-		private String limit_type;
-		private BigDecimal amount;
-		
-		public String getLimit_type() {
-			return limit_type;
-		}
-		
-		public BigDecimal getAmount() {
-			return amount;
-		}
-	}
+	@Inject
+	private AccountRepository accountRepository;
 	
 	@RequestMapping(method=RequestMethod.GET, value="/v1/accounts/{id}")
 	public ResponseEntity<Account> getAccountsById(@PathVariable Long id) {
@@ -55,26 +42,15 @@ public class AccountController {
 		return new ResponseEntity<List<Account>>(accountRepository.findAll(), HttpStatus.OK);
 	}
 	
+	@Transactional
 	@RequestMapping(method=RequestMethod.PATCH, value="/v1/accounts/{id}")
 	public ResponseEntity<Void> getAmountLimits(@PathVariable Long id, @RequestBody List<LimitPatchRequest> param) {
-		accountRepository.findOne(id).ifPresent(curryFirst(this::updateAccountLimits, param));
-		return new ResponseEntity<>(HttpStatus.OK);
-	}
-
-	private void updateAccountLimits(final List<LimitPatchRequest> param, final Account account) {
-		final ImmutableMap<LimitType, Long> amountByLimitType = ImmutableMap.of(
-				LimitType.CREDIT, extractParamAmount(LimitType.CREDIT, param),
-				LimitType.WITHDRAWAL, extractParamAmount(LimitType.WITHDRAWAL, param)
-				);
-		for(AccountLimit limit : account.getLimits()) {
-			limit.requestUpdate(amountByLimitType.getOrDefault(limit.getType(), 0L));
+		accountRepository.findOne(id).ifPresent(curryLast(accountService::updateAccountLimits, param));
+		if(param.stream().allMatch(LimitPatchRequest::getAccepted)) {
+			return new ResponseEntity<>(HttpStatus.ACCEPTED);
 		}
-		accountRepository.save(account);
+		TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+		return new ResponseEntity<Void>(HttpStatus.NOT_ACCEPTABLE);
 	}
-
-	private long extractParamAmount(final LimitType type, final List<LimitPatchRequest> param) {
-		return param.stream().filter(l -> l.getLimit_type().equals(type.getId())).findFirst().map(LimitPatchRequest::getAmount).orElse(BigDecimal.ZERO).scaleByPowerOfTen(2).longValue();
-	}
-	
 
 }

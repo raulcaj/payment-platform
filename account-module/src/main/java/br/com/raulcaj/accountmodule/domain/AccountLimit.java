@@ -1,11 +1,16 @@
 package br.com.raulcaj.accountmodule.domain;
 
 import java.io.Serializable;
+import java.util.Optional;
 
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 import javax.validation.constraints.Min;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 
 @Entity
 public class AccountLimit implements Serializable {
@@ -20,6 +25,10 @@ public class AccountLimit implements Serializable {
 	@Min(value=0L, message="balance must always be positive")
 	private long balance;
 	
+	@ManyToOne
+	@JsonIgnore
+	private Account account;
+	
 	public AccountLimit() {
 	}
 	
@@ -28,20 +37,17 @@ public class AccountLimit implements Serializable {
 		this.balance = 0L;
 	}
 	
-	public long requestUpdate(final long amount) {
-		return amount < 0 ? decrease(-amount) : increase(amount);
-	}
-	
-	public long increase(@Min(0L)final long amount) {
-		this.balance += amount;
-		return this.balance;
-	}
-	
-	public long decrease(@Min(0L)final long amount) {
-		if(this.balance - amount < 0) {
+	public long requestUpdate(final Optional<LimitPatchRequest> request) {
+		if(!request.isPresent()) {
 			return this.balance;
 		}
-		this.balance -= amount;
+		final LimitPatchRequest limitPatchRequest = request.get();
+		final long amount = limitPatchRequest.getAmount().scaleByPowerOfTen(2).longValue();
+		if(amount == 0 || this.balance+amount < 0) {
+			return this.balance;
+		}
+		limitPatchRequest.accept();
+		this.balance += amount;
 		return this.balance;
 	}
 	
