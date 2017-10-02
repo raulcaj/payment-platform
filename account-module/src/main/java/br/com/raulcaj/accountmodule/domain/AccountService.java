@@ -2,32 +2,56 @@ package br.com.raulcaj.accountmodule.domain;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
+
+import javax.validation.constraints.NotNull;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.google.common.collect.ImmutableMap;
+import br.com.raulcaj.accountmodule.controllers.NotAcceptableException;
+import br.com.raulcaj.accountmodule.controllers.NotFoundException;
 
 @Service
 public class AccountService {
+
+	@Value("${error.message.cannot_update_limit}")
+	private String cannotUpdateLimit;
 	
 	@Autowired
 	private AccountRepository accountRepository;
 
-	public void updateAccountLimits(final Account account, final List<LimitPatchRequest> param) {
-		final ImmutableMap<LimitType, Optional<LimitPatchRequest>> amountByLimitType = ImmutableMap.of(
-				LimitType.CREDIT, extractParamAmount(LimitType.CREDIT, param),
-				LimitType.WITHDRAWAL, extractParamAmount(LimitType.WITHDRAWAL, param)
-				);
-		for(final AccountLimit limit : account.getLimits()) {
-			limit.requestUpdate(amountByLimitType.getOrDefault(limit.getType(), Optional.empty()));
-		}
-		accountRepository.save(account);
+	public Optional<Account> findById(@NotNull Long id) {
+		return accountRepository.findOne(id);
 	}
-	
 
-	private Optional<LimitPatchRequest> extractParamAmount(final LimitType type, final List<LimitPatchRequest> param) {
-		return param.stream().filter(l -> l.getLimit_type().equals(type.getId())).findFirst();
+	public List<Account> findAll() {
+		return accountRepository.findAll();
 	}
-	
+
+	public void updateLimits(final Long id, final Account patchRequest) throws Exception {
+		ifPresentOrElseThrow(this.findById(id), a -> {
+			a.updateLimit(patchRequest);
+			try {
+				accountRepository.save(a);
+			} catch (Exception e) {
+				throw new NotAcceptableException(cannotUpdateLimit);
+			}
+		}, NotFoundException::new);
+	}
+
+	@FunctionalInterface
+	private interface ThrowableConsumer<T> {
+		void accept(T t) throws Exception;
+	}
+
+	private <T, E extends Exception> void ifPresentOrElseThrow(Optional<T> operand, ThrowableConsumer<T> code,
+			Supplier<E> ex) throws Exception {
+		if (operand.isPresent()) {
+			code.accept(operand.get());
+		} else {
+			throw ex.get();
+		}
+	}
 }
