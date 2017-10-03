@@ -3,7 +3,7 @@ A sample payment platform with transaction and account modules
 
 ## Running this sample
 
-First go into eureka-ds directory and execute 'mvn spring-boot:run', it will start a discovery server.
+First go into eureka-ds directory and execute 'mvn spring-boot:run', it will start a discovery server.  
 Then you can start account-module and transaction-module in any other with 'mvn spring-boot:run' within them respectives directories.
 
 ## What can you do?
