@@ -37,12 +37,12 @@ public class TransactionService {
 		validateTransactionRequest(transactionRequest);
 		final OperationType operationType = operationTypeRepository.findOne(transactionRequest.getOperationTypeId()).get();
 		final Transaction transaction = transactionFactory.createTransaction(transactionRequest.getAccountId(), transactionRequest.getAmount(), operationType);
-		updateCreditTransactions(transaction);
+		updatePendingCreditTransactions(transaction);
 		transactionRepository.save(transaction);
 		accountService.executeAccountLimitUpdate(transaction.getAccountId(), transaction.getAmountLeft(WITHDRAWAL_OPERATION_ID));
 	}
 
-	private void updateCreditTransactions(Transaction transaction) {
+	private void updatePendingCreditTransactions(final Transaction transaction) {
 		final List<Transaction> creditTransactions = transactionRepository.findCreditTransactions(transaction.getAccountId(), PAYMENT_OPERATION_ID);
 		for(final Transaction payment : creditTransactions) {
 			paymentService.payTransaction(payment, transaction);
