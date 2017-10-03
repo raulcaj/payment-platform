@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 
@@ -27,21 +28,27 @@ public class PaymentService {
 	@Autowired
 	private PaymentsTrackingRepository paymentsTrackingRepository;
 	
+	@Autowired
+	private AutowireCapableBeanFactory beanFactory;
+	
 	@Value("${transaction_module.config.payment_operation_id}")
 	private long paymentOperationTypeId;
 	
-	public void createPayment(TransactionRequest paymentRequest) throws Exception {
+	public void createPayment(TransactionRequest transactionRequest) throws Exception {
+		final TransactionRequest paymentRequest = TransactionRequest.createTxRequest(transactionRequest.getAccountId(), paymentOperationTypeId, transactionRequest.getAmount());
 		validatePaymentRequest(paymentRequest);
-		final Transaction payment = Transaction.createTx(paymentRequest.getAccountId(), paymentRequest.getAmount(), operationTypeRepository.findOne(paymentOperationTypeId).get());
+		final Transaction payment = Transaction.createPayment(paymentRequest.getAccountId(), paymentRequest.getAmount(), operationTypeRepository.findOne(paymentOperationTypeId).get());
+		beanFactory.autowireBean(payment);
 		transactionRepository.save(payment);
 		final Pair<BigDecimal, BigDecimal> amountPaid = payPreviousTransactions(payment);
-		accountService.increaseAccountLimit(paymentRequest.getAccountId(), amountPaid);
+		accountService.executeAccountLimitUpdate(paymentRequest.getAccountId(), amountPaid);
 	}
 
 	private Pair<BigDecimal, BigDecimal> payPreviousTransactions(final Transaction payment) {
 		final List<Transaction> unpaidTransactions = transactionRepository.findUnpaidTransactions(payment.getAccountId(), payment.getOperationType().getId());
 		Pair<BigDecimal, BigDecimal> totalPaid = Pair.of(BigDecimal.ZERO, BigDecimal.ZERO);
 		for(final Transaction transaction : unpaidTransactions) {
+			beanFactory.autowireBean(transaction);
 			final Pair<BigDecimal, BigDecimal> amountPaid = transaction.updateBalance(payment);
 			transactionRepository.save(transaction);
 			final PaymentsTracking paymentsTracking = PaymentsTracking.createPaymentsTracking(payment, transaction, MathBD.max(amountPaid.getFirst(), amountPaid.getSecond()));

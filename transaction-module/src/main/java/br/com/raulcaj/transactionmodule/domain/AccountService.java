@@ -14,9 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import br.com.raulcaj.transactionmodule.controller.NotAcceptableException;
 
@@ -52,60 +51,31 @@ public class AccountService {
 		return service.map(ServiceInstance::getUri).map(Object::toString).orElse("http://localhost:8080")
 				.concat(operationPath);
 	}
-
-	public void decreaseAccountLimit(final Long accountId, final Pair<BigDecimal, BigDecimal> amountSpent)
-			throws Exception {
-		executeAccountLimitUpdate(accountId, amountSpent, true);
-	}
-
-	private void executeAccountLimitUpdate(final Long accountId, final Pair<BigDecimal, BigDecimal> amountSpent,
-			final boolean negate) throws NotAcceptableException {
-		final Object accountInfo = AccountRequest.createAccountRequest(accountId, amountSpent, negate);
-		final ResponseEntity<Void> response = restTemplate.exchange(getUri(patchLimitPath), HttpMethod.PATCH, new HttpEntity<>(accountInfo), Void.class,
-				accountId);
-		if(!HttpStatus.OK.equals(response.getStatusCode())) {
-			throw new NotAcceptableException("Could not update account limit");
-		}
-	}
 	
-	private static class AccountRequest {
-		private Long accountId;
-		private BigDecimal avaiableCreditLimit;
-		private BigDecimal avaiableWithdrawalLimit;
-		
-		private static AccountRequest createAccountRequest(final Long accountId, final Pair<BigDecimal, BigDecimal> amount, final boolean negate) {
-			final AccountRequest accountRequest = new AccountRequest();
-			accountRequest.accountId = accountId;
-			accountRequest.avaiableCreditLimit = negate ? amount.getFirst().negate() : amount.getFirst();
-			accountRequest.avaiableWithdrawalLimit = negate ? amount.getSecond().negate() : amount.getSecond();
-			return accountRequest;
+	public void executeAccountLimitUpdate(final Long accountId, final Pair<BigDecimal, BigDecimal> amountSpent) throws NotAcceptableException {
+		final AccountRequest accountInfo = AccountRequest.createAccountRequest(accountId, amountSpent);
+		try {
+			final ResponseEntity<Void> response = restTemplate.exchange(getUri(patchLimitPath), HttpMethod.PATCH,
+					new HttpEntity<>(accountInfo), Void.class, accountId);
+			if (!HttpStatus.OK.equals(response.getStatusCode())) {
+				throw new NotAcceptableException("Could not update account limit");
+			}
+		} catch (HttpClientErrorException e) {
+			if (HttpStatus.NOT_ACCEPTABLE.equals(e.getStatusCode())) {
+				throw new NotAcceptableException("Limit exceeded");
+			}
+			throw e;
 		}
-		
-		@JsonProperty("account_id")
-		public Long getAccountId() {
-			return accountId;
-		}
-		@JsonProperty("available_credit_limit")
-		public BigDecimal getAvaibleCreditLimit() {
-			return avaiableCreditLimit;
-		}
-		@JsonProperty("available_withdrawal_limit")
-		public BigDecimal getAvaibleWithdrawalLimit() {
-			return avaiableWithdrawalLimit;
-		}
-	}
-
-	public void increaseAccountLimit(final Long accountId, final Pair<BigDecimal, BigDecimal> amountPaid) throws NotAcceptableException {
-		executeAccountLimitUpdate(accountId, amountPaid, false);
 	}
 
 	public boolean accountNotExist(Long accountId) throws NotAcceptableException {
-		final ResponseEntity<AccountRequest> response = restTemplate.exchange(getUri(getByIdPath), HttpMethod.GET, null, AccountRequest.class, accountId);
-		if(HttpStatus.NOT_FOUND.equals(response.getStatusCode())) {
-			return false;
+		final ResponseEntity<AccountRequest> response = restTemplate.exchange(getUri(getByIdPath), HttpMethod.GET, null,
+				AccountRequest.class, accountId);
+		if (HttpStatus.NOT_FOUND.equals(response.getStatusCode())) {
+			return true;
 		}
-		if(HttpStatus.OK.equals(response.getStatusCode())) {
-			return response.getBody().getAccountId().equals(accountId);
+		if (HttpStatus.OK.equals(response.getStatusCode())) {
+			return !accountId.equals(response.getBody().getId());
 		}
 		throw new NotAcceptableException("Error trying to look for this account");
 	}

@@ -14,6 +14,7 @@ import org.apache.commons.lang.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.util.Pair;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
@@ -39,7 +40,7 @@ public class Transaction {
 	@JsonProperty("due_date")
 	private Long dueDate;
 	
-	@Value("transaction_module.config.withdrawal_operation_id")
+	@Value("${transaction_module.config.withdrawal_operation_id}")
 	private transient Long WITHDRAWAL_OPERATION_ID;
 
 	public Long getId() {
@@ -70,17 +71,24 @@ public class Transaction {
 		return operationType;
 	}
 
-	public static Transaction createTx(final Long account_id, final BigDecimal amount,
+	public static Transaction createTransaction(final Long account_id, final BigDecimal amount,
 			final OperationType operationType) {
 		final Transaction tx = new Transaction();
 		tx.accountId = account_id;
 		tx.operationType = operationType;
-		tx.amount = amount;
-		tx.balance = amount;
+		tx.amount = amount.negate();
+		tx.balance = amount.negate();
 		final Date eventDate = new Date();
 		tx.eventDate = eventDate.getTime();
 		tx.dueDate = calculateDueDate(eventDate);
 		return tx;
+	}
+	
+	public static Transaction createPayment(final Long account_id, final BigDecimal amount, final OperationType operationType) {
+		final Transaction payment = createTransaction(account_id, amount, operationType);
+		payment.amount = amount;
+		payment.balance = amount;
+		return payment;
 	}
 
 	private static Long calculateDueDate(final Date eventDate) {
@@ -105,6 +113,7 @@ public class Transaction {
 				this.operationType.getId() == WITHDRAWAL_OPERATION_ID ? new BigDecimal(amount) : BigDecimal.ZERO);
 	}
 	
+	@JsonIgnore
 	public Pair<BigDecimal, BigDecimal> getAmountSpent() {
 		return createAmountPair(this.amount.longValue());
 	}

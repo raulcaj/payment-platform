@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.stereotype.Service;
 
 import br.com.raulcaj.transactionmodule.controller.NotAcceptableException;
@@ -20,15 +21,19 @@ public class TransactionService {
 	@Autowired
 	private TransactionRepository transactionRepository;
 	
+	@Autowired
+	private AutowireCapableBeanFactory beanFactory;
+	
 	@Value("${transaction_module.config.payment_operation_id}")
 	private long paymentOperationTypeId;
 
 	public void createTransaction(final TransactionRequest transactionRequest) throws Exception {
 		validateTransactionRequest(transactionRequest);
 		final OperationType operationType = operationTypeRepository.findOne(transactionRequest.getOperationTypeId()).get();
-		final Transaction transaction = Transaction.createTx(transactionRequest.getAccountId(), transactionRequest.getAmount(), operationType);
+		final Transaction transaction = Transaction.createTransaction(transactionRequest.getAccountId(), transactionRequest.getAmount(), operationType);
+		beanFactory.autowireBean(transaction);
 		transactionRepository.save(transaction);		
-		accountService.decreaseAccountLimit(transaction.getAccountId(), transaction.getAmountSpent());
+		accountService.executeAccountLimitUpdate(transaction.getAccountId(), transaction.getAmountSpent());
 	}
 
 	private void validateTransactionRequest(final TransactionRequest transactionRequest)
