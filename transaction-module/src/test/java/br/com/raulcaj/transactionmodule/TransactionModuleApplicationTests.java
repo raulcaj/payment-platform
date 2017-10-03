@@ -3,6 +3,7 @@ package br.com.raulcaj.transactionmodule;
 import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -53,8 +54,13 @@ public class TransactionModuleApplicationTests {
 						throw new NotAcceptableException();
 					}
 					final Pair<BigDecimal, BigDecimal> account = REPOSITORY.get(accountId);
-					REPOSITORY.put(accountId, Pair.of(account.getFirst().add(amount.getFirst()),
-							account.getSecond().add(amount.getSecond())));
+					final Pair<BigDecimal, BigDecimal> updatedAccount = Pair.of(account.getFirst().add(amount.getFirst()),
+							account.getSecond().add(amount.getSecond()));
+					if(BigDecimal.ZERO.compareTo(updatedAccount.getFirst()) > 0 ||
+							BigDecimal.ZERO.compareTo(updatedAccount.getSecond()) > 0) {
+						throw new NotAcceptableException();
+					}
+					REPOSITORY.put(accountId, updatedAccount);
 				}
 
 				@Override
@@ -70,7 +76,7 @@ public class TransactionModuleApplicationTests {
 
 	@Autowired
 	private TestRestTemplate restTemplate;
-
+	
 	private String getUri(String path) {
 		return String.format("http://localhost:%d%s", localPort, path);
 	}
@@ -78,9 +84,40 @@ public class TransactionModuleApplicationTests {
 	@Test
 	public void createCreditTx() {
 		final TransactionRequest tr = TransactionRequest.createTxRequest(1L, 1L, new BigDecimal(100L));
+		final ResponseEntity<Void> response = sendRequest(tr);
+		assertTrue(HttpStatus.OK.equals(response.getStatusCode()));
+	}
+	
+	@Test
+	public void createOverlimitedTx() {
+		final TransactionRequest tr = TransactionRequest.createTxRequest(1L, 1L, new BigDecimal(10000L));
+		final ResponseEntity<Void> response = sendRequest(tr);
+		assertTrue(HttpStatus.NOT_ACCEPTABLE.equals(response.getStatusCode()));
+	}
+	
+	@Test
+	public void createTxAndPayIt() {
+		final TransactionRequest tr = TransactionRequest.createTxRequest(1L, 1L, new BigDecimal(1000L));
+		final ResponseEntity<Void> responseTx = sendRequest(tr);
+		assertTrue(HttpStatus.OK.equals(responseTx.getStatusCode()));
+		final TransactionRequest py = TransactionRequest.createTxRequest(1L, 4L, new BigDecimal(1000L));
+		final ResponseEntity<Void> responsePy = sendPayment(py);
+		assertTrue(HttpStatus.OK.equals(responsePy.getStatusCode()));
+		final TransactionRequest bigTx = TransactionRequest.createTxRequest(1L, 1L, new BigDecimal(4900L));
+		final ResponseEntity<Void> responseBigTx = sendRequest(bigTx);
+		assertTrue(HttpStatus.OK.equals(responseBigTx.getStatusCode()));
+	}
+
+	private ResponseEntity<Void> sendRequest(final TransactionRequest tr) {
 		final ResponseEntity<Void> response = restTemplate.exchange(getUri("/v1/transactions"), HttpMethod.POST,
 				new HttpEntity<>(tr), Void.class);
-		assertTrue(HttpStatus.OK.equals(response.getStatusCode()));
+		return response;
+	}
+	
+	private ResponseEntity<Void> sendPayment(final TransactionRequest tr) {
+		final ResponseEntity<Void> response = restTemplate.exchange(getUri("/v1/payments"), HttpMethod.POST,
+				new HttpEntity<>(Arrays.asList(tr)), Void.class);
+		return response;
 	}
 
 }
