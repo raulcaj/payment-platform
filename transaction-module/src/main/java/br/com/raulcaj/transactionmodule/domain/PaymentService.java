@@ -6,12 +6,13 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.util.Pair;
+import org.springframework.stereotype.Service;
 
 import br.com.raulcaj.transactionmodule.controller.NotAcceptableException;
 import br.com.raulcaj.transactionmodule.controller.NotFoundException;
-import br.com.raulcaj.transactionmodule.controller.TransactionRepository;
 import br.com.raulcaj.transactionmodule.util.MathBD;
 
+@Service
 public class PaymentService {
 	
 	@Autowired

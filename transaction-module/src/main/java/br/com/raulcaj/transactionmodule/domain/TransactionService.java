@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 
 import br.com.raulcaj.transactionmodule.controller.NotAcceptableException;
 import br.com.raulcaj.transactionmodule.controller.NotFoundException;
-import br.com.raulcaj.transactionmodule.controller.TransactionRepository;
 
 @Service
 public class TransactionService {
@@ -40,7 +39,7 @@ public class TransactionService {
 		if(transactionRequest.getOperationTypeId() == paymentOperationTypeId) {
 			throw new NotAcceptableException("Cannot create payment transaction");
 		}
-		if(operationTypeRepository.notExists(transactionRequest.getOperationTypeId())) {
+		if(!operationTypeRepository.exists(transactionRequest.getOperationTypeId())) {
 			throw new NotFoundException("Operation type not found");
 		}
 		if(BigDecimal.ZERO.compareTo(transactionRequest.getAmount()) > 0) {
