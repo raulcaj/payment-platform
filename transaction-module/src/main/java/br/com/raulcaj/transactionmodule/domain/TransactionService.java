@@ -24,6 +24,9 @@ public class TransactionService {
 	@Autowired
 	private TransactionFactory transactionFactory;
 	
+	@Autowired
+	private PaymentService paymentService;
+	
 	@Value("${transaction_module.config.payment_operation_id}")
 	private long PAYMENT_OPERATION_ID;
 	
@@ -41,9 +44,8 @@ public class TransactionService {
 
 	private void updateCreditTransactions(Transaction transaction) {
 		final List<Transaction> creditTransactions = transactionRepository.findCreditTransactions(transaction.getAccountId(), PAYMENT_OPERATION_ID);
-		for(final Transaction credit : creditTransactions) {
-			transaction.updateBalance(credit, WITHDRAWAL_OPERATION_ID);
-			transactionRepository.save(credit);
+		for(final Transaction payment : creditTransactions) {
+			paymentService.payTransaction(payment, transaction);
 			if(BigDecimal.ZERO.compareTo(transaction.getBalance()) == 0) {
 				break;
 			}

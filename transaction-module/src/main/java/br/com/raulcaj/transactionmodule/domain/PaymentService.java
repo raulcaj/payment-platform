@@ -49,16 +49,22 @@ public class PaymentService {
 		final List<Transaction> unpaidTransactions = transactionRepository.findUnpaidTransactions(payment.getAccountId(), payment.getOperationType().getId());
 		Pair<BigDecimal, BigDecimal> totalPaid = Pair.of(BigDecimal.ZERO, BigDecimal.ZERO);
 		for(final Transaction transaction : unpaidTransactions) {
-			final Pair<BigDecimal, BigDecimal> amountPaid = transaction.updateBalance(payment, WITHDRAWAL_OPERATION_ID);
-			transactionRepository.save(transaction);
-			final PaymentsTracking paymentsTracking = PaymentsTracking.createPaymentsTracking(payment, transaction, MathBD.max(amountPaid.getFirst(), amountPaid.getSecond()));
-			paymentsTrackingRepository.save(paymentsTracking);
+			final Pair<BigDecimal, BigDecimal> amountPaid = payTransaction(payment, transaction);
 			totalPaid = Pair.of(totalPaid.getFirst().add(amountPaid.getFirst()), totalPaid.getSecond().add(amountPaid.getSecond()));
 			if(BigDecimal.ZERO.equals(payment.getBalance())) {
 				break;
 			}
 		}
 		return totalPaid;
+	}
+
+	public Pair<BigDecimal, BigDecimal> payTransaction(final Transaction payment, final Transaction transaction) {
+		final Pair<BigDecimal, BigDecimal> amountPaid = transaction.updateBalance(payment, WITHDRAWAL_OPERATION_ID);
+		transactionRepository.save(transaction);
+		transactionRepository.save(payment);
+		final PaymentsTracking paymentsTracking = PaymentsTracking.createPaymentsTracking(payment, transaction, MathBD.max(amountPaid.getFirst(), amountPaid.getSecond()));
+		paymentsTrackingRepository.save(paymentsTracking);
+		return amountPaid;
 	}
 
 	private void validatePaymentRequest(final TransactionRequest transactionRequest)
