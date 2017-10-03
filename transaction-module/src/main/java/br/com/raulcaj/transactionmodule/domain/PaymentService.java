@@ -31,15 +31,15 @@ public class PaymentService {
 	private TransactionFactory transactionFactory;
 	
 	@Value("${transaction_module.config.payment_operation_id}")
-	private long paymentOperationTypeId;
+	private long PAYMENT_OPERATION_ID;
 	
 	@Value("${transaction_module.config.withdrawal_operation_id}")
 	private Long WITHDRAWAL_OPERATION_ID;
 	
 	public void createPayment(TransactionRequest transactionRequest) throws Exception {
-		final TransactionRequest paymentRequest = TransactionRequest.createTxRequest(transactionRequest.getAccountId(), paymentOperationTypeId, transactionRequest.getAmount());
+		final TransactionRequest paymentRequest = TransactionRequest.createTxRequest(transactionRequest.getAccountId(), PAYMENT_OPERATION_ID, transactionRequest.getAmount());
 		validatePaymentRequest(paymentRequest);
-		final Transaction payment = transactionFactory.createPayment(paymentRequest.getAccountId(), paymentRequest.getAmount(), operationTypeRepository.findOne(paymentOperationTypeId).get());
+		final Transaction payment = transactionFactory.createPayment(paymentRequest.getAccountId(), paymentRequest.getAmount(), operationTypeRepository.findOne(PAYMENT_OPERATION_ID).get());
 		transactionRepository.save(payment);
 		final Pair<BigDecimal, BigDecimal> amountPaid = payPreviousTransactions(payment);
 		accountService.executeAccountLimitUpdate(paymentRequest.getAccountId(), amountPaid);
@@ -66,7 +66,7 @@ public class PaymentService {
 		if(accountService.accountNotExist(transactionRequest.getAccountId())) {
 			throw new NotFoundException("Account not found");
 		}
-		if(transactionRequest.getOperationTypeId() != paymentOperationTypeId) {
+		if(transactionRequest.getOperationTypeId() != PAYMENT_OPERATION_ID) {
 			throw new NotAcceptableException("Cannot create transactions, only payments");
 		}
 		if(BigDecimal.ZERO.compareTo(transactionRequest.getAmount()) > 0) {
