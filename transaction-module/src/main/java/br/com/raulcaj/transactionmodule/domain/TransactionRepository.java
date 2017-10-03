@@ -18,4 +18,12 @@ public interface TransactionRepository extends Repository<Transaction, Long> {
 			+ " and tx.operationType.id != ?2"
 			+ " order by tx.operationType.chargeOrder, tx.eventDate")
 	List<Transaction> findUnpaidTransactions(Long account_id, Long payment_id);
+	
+	@Query("select tx from Transaction tx"
+			+ " where"
+			+ " tx.balance > 0"
+			+ " and tx.accountId = ?1"
+			+ " and tx.operationType.id = ?2"
+			+ " order by tx.eventDate")	
+	List<Transaction> findCreditTransactions(Long account_id, Long payment_id);
 }

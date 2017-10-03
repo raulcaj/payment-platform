@@ -112,4 +112,9 @@ public class Transaction {
 	public Pair<BigDecimal, BigDecimal> getAmountSpent(final Long WITHDRAWAL_OPERATION_ID) {
 		return createAmountPair(this.amount.longValue(), WITHDRAWAL_OPERATION_ID);
 	}
+	
+	@JsonIgnore
+	public Pair<BigDecimal, BigDecimal> getAmountLeft(final Long WITHDRAWAL_OPERATION_ID) {
+		return createAmountPair(this.balance.longValue(), WITHDRAWAL_OPERATION_ID);
+	}
 }

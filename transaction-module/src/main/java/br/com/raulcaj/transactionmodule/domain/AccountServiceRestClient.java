@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.util.Pair;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -20,7 +19,6 @@ import org.springframework.web.client.RestTemplate;
 
 import br.com.raulcaj.transactionmodule.controller.NotAcceptableException;
 
-@Profile("production")
 @Service
 public class AccountServiceRestClient implements AccountService {
 

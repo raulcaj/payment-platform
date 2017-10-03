@@ -25,7 +25,7 @@ public class TransactionService {
 	private TransactionFactory transactionFactory;
 	
 	@Value("${transaction_module.config.payment_operation_id}")
-	private long paymentOperationTypeId;
+	private long PAYMENT_OPERATION_ID;
 	
 	@Value("${transaction_module.config.withdrawal_operation_id}")
 	private Long WITHDRAWAL_OPERATION_ID;
@@ -34,8 +34,20 @@ public class TransactionService {
 		validateTransactionRequest(transactionRequest);
 		final OperationType operationType = operationTypeRepository.findOne(transactionRequest.getOperationTypeId()).get();
 		final Transaction transaction = transactionFactory.createTransaction(transactionRequest.getAccountId(), transactionRequest.getAmount(), operationType);
-		transactionRepository.save(transaction);		
-		accountService.executeAccountLimitUpdate(transaction.getAccountId(), transaction.getAmountSpent(WITHDRAWAL_OPERATION_ID));
+		updateCreditTransactions(transaction);
+		transactionRepository.save(transaction);
+		accountService.executeAccountLimitUpdate(transaction.getAccountId(), transaction.getAmountLeft(WITHDRAWAL_OPERATION_ID));
+	}
+
+	private void updateCreditTransactions(Transaction transaction) {
+		final List<Transaction> creditTransactions = transactionRepository.findCreditTransactions(transaction.getAccountId(), PAYMENT_OPERATION_ID);
+		for(final Transaction credit : creditTransactions) {
+			transaction.updateBalance(credit, WITHDRAWAL_OPERATION_ID);
+			transactionRepository.save(credit);
+			if(BigDecimal.ZERO.compareTo(transaction.getBalance()) == 0) {
+				break;
+			}
+		}
 	}
 
 	private void validateTransactionRequest(final TransactionRequest transactionRequest)
@@ -43,7 +55,7 @@ public class TransactionService {
 		if(accountService.accountNotExist(transactionRequest.getAccountId())) {
 			throw new NotFoundException("Account not found");
 		}
-		if(transactionRequest.getOperationTypeId() == paymentOperationTypeId) {
+		if(transactionRequest.getOperationTypeId() == PAYMENT_OPERATION_ID) {
 			throw new NotAcceptableException("Cannot create payment transaction");
 		}
 		if(!operationTypeRepository.exists(transactionRequest.getOperationTypeId())) {
