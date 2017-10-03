@@ -16,6 +16,11 @@ import br.com.raulcaj.accountmodule.domain.Account;
 import br.com.raulcaj.accountmodule.domain.AccountService;
 
 
+/**
+ * Account Controller
+ * 
+ * @author Raul Almeida <raul.caj@gmail.com>
+ */
 @RestController
 public class AccountController {
 
@@ -23,16 +28,29 @@ public class AccountController {
 	private AccountService accountService;
 	
 	
+	/**
+	 * @param id Account id
+	 * @return Account full information
+	 */
 	@RequestMapping(method=RequestMethod.GET, value="/v1/accounts/{id}")
 	public ResponseEntity<Account> getAccountsById(@PathVariable Long id) {
 		return accountService.findById(id).map(a -> new ResponseEntity<>(a, HttpStatus.OK)).orElse(new ResponseEntity<>(HttpStatus.NO_CONTENT));
 	}
 	
+	/**
+	 * @return All accounts full information
+	 */
 	@RequestMapping(method=RequestMethod.GET, value="/v1/accounts/limits")
 	public ResponseEntity<List<Account>> getAccounts() {
 		return new ResponseEntity<List<Account>>(accountService.findAll(), HttpStatus.OK);
 	}
 	
+	/**
+	 * @param id Account id
+	 * @param patchRequest Account properties to patch
+	 * @return HttpStatus.OK
+	 * @throws Exception
+	 */
 	@RequestMapping(method=RequestMethod.PATCH, value="/v1/accounts/{id}")
 	public ResponseEntity<Void> getAmountLimits(@PathVariable Long id, @RequestBody Account patchRequest) throws Exception {
 		accountService.updateLimits(id, patchRequest);
