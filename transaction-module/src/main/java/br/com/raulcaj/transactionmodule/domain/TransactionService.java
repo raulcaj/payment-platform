@@ -2,9 +2,9 @@ package br.com.raulcaj.transactionmodule.domain;
 
 import java.math.BigDecimal;
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.stereotype.Service;
 
 import br.com.raulcaj.transactionmodule.controller.NotAcceptableException;
@@ -22,18 +22,20 @@ public class TransactionService {
 	private TransactionRepository transactionRepository;
 	
 	@Autowired
-	private AutowireCapableBeanFactory beanFactory;
+	private TransactionFactory transactionFactory;
 	
 	@Value("${transaction_module.config.payment_operation_id}")
 	private long paymentOperationTypeId;
+	
+	@Value("${transaction_module.config.withdrawal_operation_id}")
+	private Long WITHDRAWAL_OPERATION_ID;
 
 	public void createTransaction(final TransactionRequest transactionRequest) throws Exception {
 		validateTransactionRequest(transactionRequest);
 		final OperationType operationType = operationTypeRepository.findOne(transactionRequest.getOperationTypeId()).get();
-		final Transaction transaction = Transaction.createTransaction(transactionRequest.getAccountId(), transactionRequest.getAmount(), operationType);
-		beanFactory.autowireBean(transaction);
+		final Transaction transaction = transactionFactory.createTransaction(transactionRequest.getAccountId(), transactionRequest.getAmount(), operationType);
 		transactionRepository.save(transaction);		
-		accountService.executeAccountLimitUpdate(transaction.getAccountId(), transaction.getAmountSpent());
+		accountService.executeAccountLimitUpdate(transaction.getAccountId(), transaction.getAmountSpent(WITHDRAWAL_OPERATION_ID));
 	}
 
 	private void validateTransactionRequest(final TransactionRequest transactionRequest)

@@ -11,7 +11,6 @@ import javax.persistence.OneToOne;
 import javax.validation.constraints.NotNull;
 
 import org.apache.commons.lang.time.DateUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.util.Pair;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -40,9 +39,6 @@ public class Transaction {
 	@JsonProperty("due_date")
 	private Long dueDate;
 	
-	@Value("${transaction_module.config.withdrawal_operation_id}")
-	private transient Long WITHDRAWAL_OPERATION_ID;
-
 	public Long getId() {
 		return id;
 	}
@@ -71,21 +67,20 @@ public class Transaction {
 		return operationType;
 	}
 
-	public static Transaction createTransaction(final Long account_id, final BigDecimal amount,
+	public static Transaction setupTransaction(final Transaction transaction, final Long account_id, final BigDecimal amount,
 			final OperationType operationType) {
-		final Transaction tx = new Transaction();
-		tx.accountId = account_id;
-		tx.operationType = operationType;
-		tx.amount = amount.negate();
-		tx.balance = amount.negate();
+		transaction.accountId = account_id;
+		transaction.operationType = operationType;
+		transaction.amount = amount.negate();
+		transaction.balance = amount.negate();
 		final Date eventDate = new Date();
-		tx.eventDate = eventDate.getTime();
-		tx.dueDate = calculateDueDate(eventDate);
-		return tx;
+		transaction.eventDate = eventDate.getTime();
+		transaction.dueDate = calculateDueDate(eventDate);
+		return transaction;
 	}
 	
-	public static Transaction createPayment(final Long account_id, final BigDecimal amount, final OperationType operationType) {
-		final Transaction payment = createTransaction(account_id, amount, operationType);
+	public static Transaction setupPayment(final Transaction transaction, final Long account_id, final BigDecimal amount, final OperationType operationType) {
+		final Transaction payment = setupTransaction(transaction, account_id, amount, operationType);
 		payment.amount = amount;
 		payment.balance = amount;
 		return payment;
@@ -98,23 +93,23 @@ public class Transaction {
 		return calendar.getTime().getTime();
 	}
 
-	public Pair<BigDecimal, BigDecimal> updateBalance(final Transaction payment) {
+	public Pair<BigDecimal, BigDecimal> updateBalance(final Transaction payment, final Long WITHDRAWAL_OPERATION_ID) {
 		final Long previousBalance = this.balance.longValue();
 		final Long paymentBalance = payment.balance.longValue();
 		final Long newBalance = Math.min(0, previousBalance + paymentBalance);
 		final Long amountPaid = Math.abs(Math.abs(previousBalance) - Math.abs(newBalance));
 		this.balance = new BigDecimal(newBalance);
 		payment.balance = new BigDecimal(paymentBalance - amountPaid);
-		return createAmountPair(amountPaid);
+		return createAmountPair(amountPaid, WITHDRAWAL_OPERATION_ID);
 	}
 
-	private Pair<BigDecimal, BigDecimal> createAmountPair(final Long amount) {
+	private Pair<BigDecimal, BigDecimal> createAmountPair(final Long amount, final Long WITHDRAWAL_OPERATION_ID) {
 		return Pair.of(this.operationType.getId() == WITHDRAWAL_OPERATION_ID ? BigDecimal.ZERO : new BigDecimal(amount),
 				this.operationType.getId() == WITHDRAWAL_OPERATION_ID ? new BigDecimal(amount) : BigDecimal.ZERO);
 	}
 	
 	@JsonIgnore
-	public Pair<BigDecimal, BigDecimal> getAmountSpent() {
-		return createAmountPair(this.amount.longValue());
+	public Pair<BigDecimal, BigDecimal> getAmountSpent(final Long WITHDRAWAL_OPERATION_ID) {
+		return createAmountPair(this.amount.longValue(), WITHDRAWAL_OPERATION_ID);
 	}
 }
