@@ -1,21 +1,24 @@
 package br.com.raulcaj.transactionmodule.domain;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Optional;
 
-import javax.inject.Inject;
-
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.data.util.Pair;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import br.com.raulcaj.transactionmodule.controller.NotAcceptableException;
 
 @Service
 public class AccountService {
@@ -26,7 +29,7 @@ public class AccountService {
 	@Value("${service.account.path.patchLimit}")
 	private String patchLimitPath;
 
-	@Inject
+	@Autowired
 	private DiscoveryClient discoveryClient;
 
 	@Value("${service.account.name}")
@@ -44,53 +47,67 @@ public class AccountService {
 		return restTemplate;
 	}
 
-	private String operationUri(final String operationPath) {
+	private String getUri(final String operationPath) {
 		final Optional<ServiceInstance> service = discoveryClient.getInstances(accountServiceName).stream().findFirst();
 		return service.map(ServiceInstance::getUri).map(Object::toString).orElse("http://localhost:8080")
 				.concat(operationPath);
 	}
 
-	public boolean decreaseAccountLimit(TxRequest tx, OperationType operationType) throws Exception {
-		if(!isValidTxRequest(tx, operationType)) {
+	public void decreaseAccountLimit(final Long accountId, final Pair<BigDecimal, BigDecimal> amountSpent)
+			throws Exception {
+		executeAccountLimitUpdate(accountId, amountSpent, true);
+	}
+
+	private void executeAccountLimitUpdate(final Long accountId, final Pair<BigDecimal, BigDecimal> amountSpent,
+			final boolean negate) throws NotAcceptableException {
+		final Object accountInfo = AccountRequest.createAccountRequest(accountId, amountSpent, negate);
+		final ResponseEntity<Void> response = restTemplate.exchange(getUri(patchLimitPath), HttpMethod.PATCH, new HttpEntity<>(accountInfo), Void.class,
+				accountId);
+		if(!HttpStatus.OK.equals(response.getStatusCode())) {
+			throw new NotAcceptableException("Could not update account limit");
+		}
+	}
+	
+	private static class AccountRequest {
+		private Long accountId;
+		private BigDecimal avaiableCreditLimit;
+		private BigDecimal avaiableWithdrawalLimit;
+		
+		private static AccountRequest createAccountRequest(final Long accountId, final Pair<BigDecimal, BigDecimal> amount, final boolean negate) {
+			final AccountRequest accountRequest = new AccountRequest();
+			accountRequest.accountId = accountId;
+			accountRequest.avaiableCreditLimit = negate ? amount.getFirst().negate() : amount.getFirst();
+			accountRequest.avaiableWithdrawalLimit = negate ? amount.getSecond().negate() : amount.getSecond();
+			return accountRequest;
+		}
+		
+		@JsonProperty("account_id")
+		public Long getAccountId() {
+			return accountId;
+		}
+		@JsonProperty("available_credit_limit")
+		public BigDecimal getAvaibleCreditLimit() {
+			return avaiableCreditLimit;
+		}
+		@JsonProperty("available_withdrawal_limit")
+		public BigDecimal getAvaibleWithdrawalLimit() {
+			return avaiableWithdrawalLimit;
+		}
+	}
+
+	public void increaseAccountLimit(final Long accountId, final Pair<BigDecimal, BigDecimal> amountPaid) throws NotAcceptableException {
+		executeAccountLimitUpdate(accountId, amountPaid, false);
+	}
+
+	public boolean accountNotExist(Long accountId) throws NotAcceptableException {
+		final ResponseEntity<AccountRequest> response = restTemplate.exchange(getUri(getByIdPath), HttpMethod.GET, null, AccountRequest.class, accountId);
+		if(HttpStatus.NOT_FOUND.equals(response.getStatusCode())) {
 			return false;
 		}
-		final Map<String, Object> request = new LinkedHashMap<>();
-		request.put("limit_type", operationType.getLimit_type());
-		request.put("amount", tx.getAmount().negate());
-		try {
-			restTemplate.patchForObject(operationUri(patchLimitPath), Arrays.asList(request), Object.class, tx.getAccount_id());
-			return true;
-		} catch (HttpClientErrorException e) {
-			if (HttpStatus.NOT_ACCEPTABLE.equals(e.getStatusCode())) {
-				return false;
-			}
+		if(HttpStatus.OK.equals(response.getStatusCode())) {
+			return response.getBody().getAccountId().equals(accountId);
 		}
-		return false;
+		throw new NotAcceptableException("Error trying to look for this account");
 	}
-	
-	public boolean increaseAccountLimit(PaymentRequest payment, OperationType paymentOperation) {
-		if(!isValidPaymentRequest(payment)) {
-			return false;
-		}
-		final Map<String, Object> request = new LinkedHashMap<>();
-		request.put("limit_type", paymentOperation.getLimit_type());
-		request.put("amount", payment.getAmount());
-		try {
-			restTemplate.patchForObject(operationUri(patchLimitPath), Arrays.asList(request), Object.class, payment.getAccount_id());
-			return true;
-		} catch (HttpClientErrorException e) {
-			if (HttpStatus.NOT_ACCEPTABLE.equals(e.getStatusCode())) {
-				return false;
-			}
-		}
-		return false;
-	}
-	
-	private boolean isValidTxRequest(TxRequest tx, OperationType operationType) {
-		return !"payment".equals(operationType.getLimit_type()) && tx.getAmount().compareTo(BigDecimal.ZERO) > 0;
-	}
-	
-	private boolean isValidPaymentRequest(PaymentRequest payment) {
-		return payment.getAmount().compareTo(BigDecimal.ZERO) > 0;
-	}
+
 }

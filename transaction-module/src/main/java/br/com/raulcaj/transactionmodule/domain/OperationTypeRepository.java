@@ -8,4 +8,6 @@ import org.springframework.data.repository.Repository;
 public interface OperationTypeRepository extends Repository<OperationType, Long> {
 	Optional<OperationType> findOne(Long id);
 	List<OperationType> findAll();
+	
+	boolean notExists(Long operationTypeId);
 }
