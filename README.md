@@ -27,3 +27,5 @@ Then you can start account-module and transaction-module in any other with 'mvn 
 ### **/v1/payments**
 	**POST**  
 		you can send new payment transactions
+
+### Test
